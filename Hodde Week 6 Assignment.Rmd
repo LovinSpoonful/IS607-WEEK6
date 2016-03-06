@@ -1,0 +1,78 @@
+---
+title: "IS607 - Week 6"
+author: "Rob Hodde"
+date: "March 6, 2016"
+output: html_document
+---
+
+This week, we'll look at how to use R to tidy (reshape) our data, moving between "wide" and "long" formats to best support our analysis.  We'll work with tidy data using both "base R" functionality and Hadley Wickham's tidyr package.  We also introduce Hadley's dplyr package.  You'll practice using both of these packages in your Week 6 assignment, and in your Project 2, due next week.
+
+Your code should be in an R Markdown file, posted to rpubs.com, and should include narrative descriptions of your data cleanup work, analysis, and conclusions. Please include in your homework submission: 
+  - the URL to the .Rmd file in your GitHub repository
+  - the URL for your rpubs.com web page
+
+---------
+
+*(1) Create a .CSV file* that includes all of the information.
+*(2a) Read the information from your .csv file into R.*  
+
+```{r}
+
+f <- read.csv(file = "https://raw.githubusercontent.com/LovinSpoonful/IS607-WEEK6/ec842a6c289fdd9ea41fb2c1801dba8b9d03c403/AlaskaAMWEST.csv", header=FALSE, sep=",") #read the csv file into a data frame
+
+#assign friendly names to data frame
+n <- c("Airline", "Status", "Los Angeles", "Phoenix", "San Diego", "San Francisco", "Seattle")
+names(f) <- n
+
+#remove the first row because it only held "unfriendly" columnnames
+f <- f[-1,]
+
+# copy the airline names to the lower row
+f[2,1] <-  f[1,1] 
+f[5,1] <-  f[4,1]
+
+```
+   
+    
+     
+*(2b) Use tidyr and dplyr as needed to tidy and transform your data.*
+  
+```{r}
+
+suppressMessages(library(dplyr))
+suppressWarnings(library(tidyr))
+
+#select all the on time flights, then spread them
+f1 <- filter(f,Status == "on time")
+f3 <- suppressWarnings(gather(f1,"City","Flights",3:7))
+f3$Flights <- as.numeric(as.character(f3$Flights))
+
+#select all the delayed flights, spread them
+f2 <- filter(f,Status == "delayed")
+f4 <- suppressWarnings(gather(f2,"City","Flights",3:7))
+f4$Flights <- as.numeric(as.character(f4$Flights))
+
+#merge the two data frames together
+#this is "Tidy" data:
+f5 <- bind_rows(f3,f4)
+f5
+```
+   
+   
+    
+*(3) Perform analysis to compare the arrival delays for the two airlines.*
+  
+```{r}
+
+#show overall summary of late and on-time flights by airline
+f6 <- f5 %>% 
+  group_by(Airline, Status) %>% 
+  summarise(Flights = sum(Flights))
+f6
+
+
+f7 <- spread(f6,Status, Flights) # cast the status values into separate columns
+mutate(f7,Late_Proportion = delayed / (`on time` + delayed)) #calculate the proportion of delayed flights by airline
+
+
+```
